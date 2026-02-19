@@ -81,7 +81,7 @@ except ImportError:
     else:
         print("[config] ⚠️ config.py 없음, 환경 변수도 미설정 — 텔레그램 비활성화")
 
-DATABASE = "algamja.db"
+DATABASE = os.environ.get("DATABASE_PATH", "algamja.db")
 
 ASSET_LIST = ["S&P500", "NASDAQ", "KOSPI", "KOSDAQ", "비트코인", "환율(원/달러)", "금", "은"]
 
