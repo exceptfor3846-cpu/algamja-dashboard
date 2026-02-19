@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🥔 알감자지수 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ── 기본 리셋 & 변수 ─────────────────────── */
+:root {
+  --bg:       #0d0d0d;
+  --card:     #161616;
+  --card2:    #1e1e1e;
+  --border:   #2a2a2a;
+  --text:     #e2e2e2;
+  --muted:    #777;
+  --accent:   #f5a623;
+  --accent2:  #ffc85e;
+  --up:       #4caf50;
+  --down:     #f44336;
+  --hit-col:  #4caf50;
+  --miss-col: #f44336;
+  --radius:   10px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+a { color: var(--accent); }
+select, input, button { font-family: inherit; }
+
+/* ── 레이아웃 ─────────────────────────────── */
+.wrap { max-width: 1440px; margin: 0 auto; padding: 24px 20px; }
+
+/* ── 헤더 ─────────────────────────────────── */
+.header {
+  text-align: center;
+  padding: 36px 20px 28px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 32px;
+}
+.header h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+.header .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 20px; }
+
+.disclaimer {
+  background: #1a1500;
+  border: 1px solid #3a2e00;
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  color: #c8a84b;
+  font-size: 0.85rem;
+  max-width: 860px;
+  margin: 0 auto 16px;
+  text-align: left;
+}
+
+.criteria {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  max-width: 860px;
+  margin: 0 auto;
+  text-align: left;
+}
+.criteria h4 { color: var(--accent); font-size: 0.82rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+.criteria ol { padding-left: 18px; color: var(--muted); font-size: 0.85rem; }
+.criteria li { margin: 4px 0; }
+
+/* ── 스탯 카드 ────────────────────────────── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  transition: border-color .2s;
+}
+.stat-card:hover { border-color: var(--accent); }
+.stat-card .lbl { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; }
+.stat-card .val { font-size: 2rem; font-weight: 700; }
+.stat-card.main  .val { color: var(--accent); }
+.stat-card.hits  .val { color: var(--hit-col); }
+.stat-card.fails .val { color: var(--miss-col); }
+
+/* ── 자산별 요약 ───────────────────────────── */
+.asset-summary {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 28px;
+}
+.asset-summary h3 { font-size: 0.9rem; color: var(--accent); margin-bottom: 14px; }
+.asset-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.asset-chip {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  min-width: 140px;
+}
+.asset-chip .name { color: var(--text); font-weight: 600; }
+.asset-chip .rate { margin-top: 4px; }
+.rate-bar-wrap { background: #1a1a1a; border-radius: 4px; height: 4px; margin-top: 5px; overflow: hidden; }
+.rate-bar { height: 100%; border-radius: 4px; background: var(--accent); transition: width .4s; }
+
+/* ── 툴바 ─────────────────────────────────── */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.toolbar-left { display: flex; gap: 8px; flex-wrap: wrap; }
+.toolbar-right { color: var(--muted); font-size: 0.8rem; }
+
+/* ── 버튼 ─────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .18s;
+  white-space: nowrap;
+}
+.btn-primary  { background: var(--accent); color: #000; }
+.btn-primary:hover  { background: var(--accent2); }
+.btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-secondary:hover { background: var(--card2); }
+.btn-sm { padding: 5px 10px; font-size: 0.78rem; border-radius: 6px; font-weight: 600; }
+.btn-hit  { background: rgba(76,175,80,.12); color: var(--hit-col); border: 1px solid var(--hit-col); }
+.btn-hit.on  { background: var(--hit-col); color: #fff; }
+.btn-miss { background: rgba(244,67,54,.12); color: var(--miss-col); border: 1px solid var(--miss-col); }
+.btn-miss.on { background: var(--miss-col); color: #fff; }
+.btn-del  { background: transparent; border: 1px solid #2a2a2a; color: #555; }
+.btn-del:hover { border-color: var(--miss-col); color: var(--miss-col); }
+.btn-edit { background: transparent; border: 1px solid #2a2a2a; color: #555; }
+.btn-edit:hover { border-color: var(--accent); color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── 어드민 제어 ──────────────────────────── */
+/* .admin-only 초기 숨김은 JS에서 inline style로 처리 */
+
+/* ── 숫자 입력 (적중/실패) ─────────────────── */
+.num-input {
+  width: 56px;
+  background: #0d0d0d;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 3px 6px;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  text-align: center;
+  outline: none;
+}
+.num-input:focus { border-color: var(--accent); }
+.num-display { font-weight: 600; }
+.num-hit  { color: var(--hit-col); }
+.num-miss { color: var(--miss-col); }
+
+/* ── 로그인 모달 ──────────────────────────── */
+.admin-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  cursor: pointer;
+  background: transparent;
+  white-space: nowrap;
+}
+.admin-bar:hover { background: rgba(245,166,35,.08); }
+
+/* ── 테이블 ────────────────────────────────── */
+.tbl-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  margin-bottom: 28px;
+}
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  background: #111;
+  padding: 11px 14px;
+  text-align: left;
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tbody td {
+  padding: 11px 14px;
+  border-bottom: 1px solid #1f1f1f;
+  white-space: nowrap;
+  font-size: 0.88rem;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: rgba(255,255,255,.025); }
+.dir-up   { color: var(--up);   font-weight: 700; }
+.dir-down { color: var(--down); font-weight: 700; }
+.chg-up   { color: var(--up); }
+.chg-down { color: var(--down); }
+.badge-pending { color: var(--muted); background: #1f1f1f; padding: 2px 8px; border-radius: 4px; font-size: 0.78rem; }
+.badge-hit  { color: var(--hit-col); font-weight: 600; }
+.badge-miss { color: var(--miss-col); font-weight: 600; }
+.tbl-empty { text-align: center; padding: 48px; color: var(--muted); }
+.btn-group { display: flex; gap: 5px; align-items: center; }
+
+/* ── 설정 패널 ────────────────────────────── */
+.settings {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 28px;
+}
+.settings h3 { font-size: 0.9rem; color: var(--accent); margin-bottom: 16px; }
+.settings-row { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.fld label { display: block; color: var(--muted); font-size: 0.78rem; margin-bottom: 6px; }
+.fld select, .fld input {
+  background: #0d0d0d;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  outline: none;
+}
+.fld select:focus, .fld input:focus { border-color: var(--accent); }
+.settings-info { color: var(--muted); font-size: 0.8rem; margin-top: 10px; }
+
+/* ── 차트 ─────────────────────────────────── */
+.chart-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 28px;
+}
+.chart-section h3 { font-size: 0.9rem; color: var(--accent); margin-bottom: 6px; }
+.chart-desc { color: var(--muted); font-size: 0.8rem; margin-bottom: 20px; }
+.chart-wrap { position: relative; height: 280px; }
+
+/* ── 모달 ─────────────────────────────────── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.75);
+  z-index: 200;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.overlay.show { display: flex; }
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 30px;
+  width: 100%;
+  max-width: 460px;
+  animation: popIn .2s ease;
+}
+@keyframes popIn { from { opacity:0; transform:scale(.96); } to { opacity:1; transform:scale(1); } }
+.modal h2 { font-size: 1.1rem; color: var(--accent); margin-bottom: 22px; }
+.form-row { margin-bottom: 16px; }
+.form-row label { display: block; color: var(--muted); font-size: 0.78rem; margin-bottom: 6px; }
+.form-row select,
+.form-row input {
+  width: 100%;
+  background: #0d0d0d;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  outline: none;
+  transition: border-color .15s;
+}
+.form-row select:focus,
+.form-row input:focus { border-color: var(--accent); }
+.dir-btns { display: flex; gap: 10px; }
+.dir-btn {
+  flex: 1; padding: 11px; border-radius: 8px;
+  border: 2px solid var(--border); background: #111;
+  color: var(--muted); font-weight: 700; cursor: pointer;
+  text-align: center; font-size: 0.95rem; transition: all .15s;
+}
+.dir-btn.up.sel   { border-color: var(--up);   color: var(--up);   background: rgba(76,175,80,.1); }
+.dir-btn.down.sel { border-color: var(--down); color: var(--down); background: rgba(244,67,54,.1); }
+.modal-actions { display: flex; gap: 10px; margin-top: 22px; }
+
+/* ── 토스트 ────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 30px; right: 30px; z-index: 999;
+  background: #222; border: 1px solid var(--border);
+  color: var(--text); padding: 12px 20px; border-radius: 10px;
+  font-size: 0.88rem; box-shadow: 0 4px 20px rgba(0,0,0,.5);
+  transform: translateY(20px); opacity: 0;
+  transition: all .25s;
+  pointer-events: none;
+}
+#toast.show { transform: translateY(0); opacity: 1; }
+
+/* ── 반응형 ─────────────────────────────────── */
+@media (max-width: 900px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 500px) {
+  .stats { grid-template-columns: 1fr 1fr; }
+  .header h1 { font-size: 1.6rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ── 헤더 ── -->
+  <div class="header">
+    <h1>🥔 알감자지수 대시보드</h1>
+    <p class="sub">특정 유튜버의 자산 예측 적중률 추적 시스템</p>
+
+    <div class="disclaimer">
+      ⚠️ 이 지수는 특정 유튜버의 자산 예측이 높은 확률로 <b>반대로 움직인다</b>는 가설을 검증하기 위함이며,
+      해당 유튜버를 비방할 의도가 없음을 분명히 합니다.
+      그럼에도 불구하고 가설이 맞다면.... 알감자 그는 신이다...
+    </div>
+
+    <div class="criteria">
+      <h4>📋 알감자지수 평가 기준</h4>
+      <ol>
+        <li>많은 투자자들이 그러하듯 영상은 보지 않습니다. 단지 썸네일만으로 해당 자산의 긍정 / 부정 예측을 판단합니다.</li>
+        <li>적중 여부 = 해당 자산의 영상 게시 시점 가격 대비 다음 영상 게시 시점 가격의 상승 / 하락 여부로 적중을 판단합니다.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- ── 통계 카드 ── -->
+  <div class="stats">
+    <div class="stat-card main">
+      <div class="lbl">🥔 알감자지수</div>
+      <div class="val" id="s-algamja">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="lbl">총 예측</div>
+      <div class="val" id="s-total">—</div>
+    </div>
+    <div class="stat-card hits">
+      <div class="lbl">✅ 총 적중</div>
+      <div class="val" id="s-hit">—</div>
+    </div>
+    <div class="stat-card fails">
+      <div class="lbl">❌ 총 실패</div>
+      <div class="val" id="s-miss">—</div>
+    </div>
+  </div>
+
+  <!-- ── 자산별 요약 ── -->
+  <div class="asset-summary">
+    <h3>📊 자산별 적중률 현황</h3>
+    <div class="asset-grid" id="asset-grid">
+      <span style="color:var(--muted)">로딩 중...</span>
+    </div>
+  </div>
+
+  <!-- ── 툴바 ── -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <button class="btn btn-primary admin-only" onclick="openModal()">＋ 예측 추가</button>
+      <button class="btn btn-secondary admin-only" id="btn-refresh" onclick="doRefresh()">🔄 가격 새로고침</button>
+      <button class="admin-bar" id="btn-login-bar" onclick="openLoginModal()">🔐 관리자 로그인</button>
+      <button class="admin-bar admin-only" id="btn-logout-bar" onclick="doLogout()">🔓 로그아웃</button>
+    </div>
+    <div class="toolbar-right" id="last-update"></div>
+  </div>
+
+  <!-- ── 예측 테이블 ── -->
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>자산시장</th>
+          <th>언급날짜</th>
+          <th>언급시점 가격</th>
+          <th>방향성</th>
+          <th>현재 가격</th>
+          <th>변동률</th>
+          <th>적중 수</th>
+          <th>실패 수</th>
+          <th>액션</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-body">
+        <tr><td colspan="10" class="tbl-empty">로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 설정 (관리자 전용) ── -->
+  <div class="settings admin-only">
+    <h3>⚙️ 자동 업데이트 설정 <span style="font-size:.75rem;color:var(--muted);font-weight:400">(관리자 전용)</span></h3>
+    <div class="settings-row">
+      <div class="fld">
+        <label>업데이트 주기 (가격 자동갱신 + 텔레그램 자동전송)</label>
+        <select id="sel-interval">
+          <option value="1">1분</option>
+          <option value="5" selected>5분</option>
+          <option value="10">10분</option>
+          <option value="30">30분</option>
+          <option value="60">1시간</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()">저장</button>
+      <button class="btn btn-secondary" onclick="sendReportNow()">📤 지금 텔레그램 전송</button>
+    </div>
+    <p class="settings-info">설정값은 DB에 저장되어 서버 재시작 후에도 유지됩니다.</p>
+  </div>
+
+  <!-- ── 데일리 차트 ── -->
+  <div class="chart-section">
+    <h3>📈 알감자지수 데일리 이력</h3>
+    <p class="chart-desc">50% 기준선 이하이면 "반대로 가는 가설"이 성립합니다.</p>
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- ── 추가 모달 ── -->
+<div class="overlay" id="modal-overlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <h2 id="modal-title">＋ 예측 추가</h2>
+
+    <div class="form-row">
+      <label>자산시장</label>
+      <select id="f-asset">
+        <option value="">— 선택하세요 —</option>
+        <option>S&amp;P500</option>
+        <option>NASDAQ</option>
+        <option>KOSPI</option>
+        <option>KOSDAQ</option>
+        <option>비트코인</option>
+        <option>환율(원/달러)</option>
+        <option>금</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>언급날짜 (유튜브 영상 게시일)</label>
+      <input type="date" id="f-date">
+    </div>
+
+    <div class="form-row">
+      <label>언급시점 자산가격</label>
+      <input type="number" id="f-price" placeholder="예: 4500" step="any" min="0">
+    </div>
+
+    <div class="form-row">
+      <label>방향성</label>
+      <div class="dir-btns">
+        <div class="dir-btn up"   id="db-up"   onclick="selDir('UP')">📈 UP</div>
+        <div class="dir-btn down" id="db-down" onclick="selDir('DOWN')">📉 DOWN</div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary"   style="flex:1" id="modal-submit-btn" onclick="submitForm()">추가하기</button>
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 로그인 모달 ── -->
+<div class="overlay" id="login-overlay" onclick="loginOverlayClick(event)">
+  <div class="modal" style="max-width:360px">
+    <h2>🔐 관리자 로그인</h2>
+    <div class="form-row">
+      <label>비밀번호</label>
+      <input type="password" id="login-pw" placeholder="관리자 비밀번호 입력"
+             onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" style="flex:1" onclick="doLogin()">로그인</button>
+      <button class="btn btn-secondary" onclick="closeLoginModal()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 토스트 ── -->
+<div id="toast"></div>
+
+<script>
+/* ──────────────────────────────────────────
+   상태
+────────────────────────────────────────── */
+let selDirection = '';
+let algamjaChart = null;
+let toastTimer   = null;
+let editId       = null;   // null = 추가 모드, 숫자 = 수정 모드
+let isAdmin      = false;  // 관리자 여부
+
+/* ──────────────────────────────────────────
+   초기화
+────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', async () => {
+  // admin-only 요소를 CSS 대신 inline style로 숨김 처리 (applyAdminUI에서 '' 복원 시 CSS 간섭 방지)
+  document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+  document.getElementById('f-date').value = new Date().toISOString().slice(0, 10);
+  await checkAuth();   // 인증 상태 확인 → applyAdminUI 호출
+  loadAll();
+  setInterval(loadAll, 60_000);
+});
+
+async function loadAll() {
+  await Promise.all([loadPredictions(), loadAssetStats(), loadChart(), loadSettings()]);
+}
+
+/* ──────────────────────────────────────────
+   토스트
+────────────────────────────────────────── */
+function toast(msg, duration = 2800) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+/* ──────────────────────────────────────────
+   예측 목록 로드
+────────────────────────────────────────── */
+async function loadPredictions() {
+  try {
+    const res  = await fetch('/api/predictions');
+    const data = await res.json();
+
+    // 통계 카드
+    document.getElementById('s-algamja').textContent = data.algamja_index.toFixed(1) + '%';
+    document.getElementById('s-total').textContent   = data.predictions.length;
+    document.getElementById('s-hit').textContent     = data.total_hit;
+    document.getElementById('s-miss').textContent    = data.total_miss;
+
+    // 테이블 렌더
+    const tbody = document.getElementById('tbl-body');
+    if (!data.predictions.length) {
+      tbody.innerHTML = `<tr><td colspan="10" class="tbl-empty">아직 예측 데이터가 없습니다.<br>위의 버튼으로 추가해 보세요 🥔</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.predictions.map((p, i) => {
+      const mentionFmt = fmtNum(p.mention_price);
+      const curFmt     = p.current_price != null ? fmtNum(p.current_price) : '<span class="badge-pending">갱신 중</span>';
+
+      let chg = '';
+      if (p.current_price != null && p.mention_price) {
+        const pct = ((p.current_price - p.mention_price) / p.mention_price * 100).toFixed(2);
+        const cls = pct > 0 ? 'chg-up' : pct < 0 ? 'chg-down' : '';
+        chg = `<span class="${cls}">${pct > 0 ? '+' : ''}${pct}%</span>`;
+      } else {
+        chg = '<span class="badge-pending">—</span>';
+      }
+
+      const dirCls  = p.direction === 'UP' ? 'dir-up' : 'dir-down';
+      const dirIcon = p.direction === 'UP' ? '📈 UP' : '📉 DOWN';
+
+      // 적중/실패: 관리자는 직접 숫자 입력, 방문자는 숫자 표시
+      const hitCell  = isAdmin
+        ? `<input type="number" class="num-input" value="${p.hit}"
+                  onchange="setResult(${p.id},'hit',this.value)" min="0">`
+        : `<span class="num-display num-hit">${p.hit}</span>`;
+      const missCell = isAdmin
+        ? `<input type="number" class="num-input" value="${p.miss}"
+                  onchange="setResult(${p.id},'miss',this.value)" min="0">`
+        : `<span class="num-display num-miss">${p.miss}</span>`;
+
+      // 액션 버튼: 관리자만
+      const actions = isAdmin
+        ? `<div class="btn-group">
+             <button class="btn btn-sm btn-edit"
+                     onclick="openEditModal(${p.id},'${p.asset_market}','${p.mention_date}',${p.mention_price},'${p.direction}')">✏️</button>
+             <button class="btn btn-sm btn-del"
+                     onclick="delRow(${p.id})">🗑</button>
+           </div>`
+        : '';
+
+      return `
+        <tr>
+          <td style="color:var(--muted)">${data.predictions.length - i}</td>
+          <td><strong>${p.asset_market}</strong></td>
+          <td>${p.mention_date}</td>
+          <td>${mentionFmt}</td>
+          <td class="${dirCls}">${dirIcon}</td>
+          <td>${curFmt}</td>
+          <td>${chg}</td>
+          <td>${hitCell}</td>
+          <td>${missCell}</td>
+          <td>${actions}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('last-update').textContent =
+      '마지막 갱신: ' + new Date().toLocaleString('ko-KR');
+
+  } catch (e) {
+    console.error(e);
+    document.getElementById('tbl-body').innerHTML =
+      `<tr><td colspan="11" class="tbl-empty">데이터 로드 실패</td></tr>`;
+  }
+}
+
+/* ──────────────────────────────────────────
+   자산별 요약
+────────────────────────────────────────── */
+async function loadAssetStats() {
+  try {
+    const rows = await (await fetch('/api/asset-stats')).json();
+    const grid = document.getElementById('asset-grid');
+
+    if (!rows.length) {
+      grid.innerHTML = '<span style="color:var(--muted)">데이터 없음</span>';
+      return;
+    }
+
+    grid.innerHTML = rows.map(r => {
+      const total = r.total_hit + r.total_miss;
+      const rate  = total ? Math.round(r.total_hit / total * 100) : null;
+      const rateStr = rate !== null ? `${rate}%` : 'N/A';
+      const barW    = rate !== null ? rate : 0;
+      const barClr  = rate !== null
+        ? (rate >= 50 ? 'var(--hit-col)' : 'var(--miss-col)')
+        : 'var(--muted)';
+
+      return `
+        <div class="asset-chip">
+          <div class="name">${r.asset_market}</div>
+          <div class="rate" style="color:${barClr};font-size:.82rem;font-weight:600;">
+            ${rateStr}
+            <span style="color:var(--muted);font-weight:400;font-size:.78rem;">
+              (${r.total_hit}적중 / ${r.total_count}건)
+            </span>
+          </div>
+          <div class="rate-bar-wrap">
+            <div class="rate-bar" style="width:${barW}%;background:${barClr}"></div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) { console.error(e); }
+}
+
+/* ──────────────────────────────────────────
+   적중/실패 숫자 저장 (관리자 전용)
+────────────────────────────────────────── */
+async function setResult(id, field, value) {
+  try {
+    const r = await fetch(`/api/predictions/${id}/result`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: Math.max(0, parseInt(value) || 0) }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      await loadAll();
+      toast(`✅ ${field === 'hit' ? '적중' : '실패'} 수가 업데이트되었습니다`);
+    } else {
+      toast('오류: ' + (d.error || '알 수 없는 오류'));
+    }
+  } catch (e) { toast('오류: ' + e.message); }
+}
+
+/* ──────────────────────────────────────────
+   삭제
+────────────────────────────────────────── */
+async function delRow(id) {
+  if (!confirm('이 예측 데이터를 삭제하시겠습니까?')) return;
+  try {
+    await fetch(`/api/predictions/${id}`, { method: 'DELETE' });
+    await loadAll();
+    toast('🗑 삭제되었습니다');
+  } catch (e) { toast('삭제 오류: ' + e.message); }
+}
+
+/* ──────────────────────────────────────────
+   가격 새로고침
+────────────────────────────────────────── */
+async function doRefresh() {
+  const btn = document.getElementById('btn-refresh');
+  btn.disabled = true;
+  btn.textContent = '업데이트 중...';
+  try {
+    await fetch('/api/refresh', { method: 'POST' });
+    toast('⏳ 가격 업데이트 시작 (약 10~20초 소요)');
+    setTimeout(async () => {
+      await loadAll();
+      btn.disabled    = false;
+      btn.textContent = '🔄 가격 새로고침';
+      toast('✅ 가격이 업데이트되었습니다');
+    }, 15_000);
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = '🔄 가격 새로고침';
+  }
+}
+
+/* ──────────────────────────────────────────
+   텔레그램 즉시 전송
+────────────────────────────────────────── */
+async function sendReportNow() {
+  try {
+    toast('📤 텔레그램 전송 중...');
+    const r = await fetch('/api/send-report', { method: 'POST' });
+    const d = await r.json();
+    if (d.success) toast('✅ 텔레그램 채널에 전송했습니다');
+    else toast('오류: ' + (d.error || '전송 실패'));
+  } catch (e) { toast('전송 오류: ' + e.message); }
+}
+
+/* ──────────────────────────────────────────
+   설정 로드 / 저장
+────────────────────────────────────────── */
+async function loadSettings() {
+  try {
+    const s = await (await fetch('/api/settings')).json();
+    if (s.update_interval) {
+      document.getElementById('sel-interval').value = s.update_interval;
+    }
+  } catch (e) { console.error(e); }
+}
+
+async function saveSettings() {
+  const v = document.getElementById('sel-interval').value;
+  try {
+    const r = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ update_interval: v }),
+    });
+    if ((await r.json()).success) toast(`⚙️ 업데이트 주기를 ${v}분으로 설정했습니다`);
+  } catch (e) { toast('설정 저장 실패'); }
+}
+
+/* ──────────────────────────────────────────
+   Chart.js
+────────────────────────────────────────── */
+async function loadChart() {
+  try {
+    const data   = await (await fetch('/api/daily-index')).json();
+    const labels = data.map(d => d.date);
+    const values = data.map(d => d.algamja_index);
+
+    if (algamjaChart) {
+      algamjaChart.data.labels            = labels;
+      algamjaChart.data.datasets[0].data  = values;
+      algamjaChart.data.datasets[1].data  = labels.map(() => 50);
+      algamjaChart.update('none');
+      return;
+    }
+
+    const ctx = document.getElementById('chart').getContext('2d');
+    algamjaChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: '알감자지수 (%)',
+            data: values,
+            borderColor: '#f5a623',
+            backgroundColor: 'rgba(245,166,35,0.08)',
+            borderWidth: 2.5,
+            pointBackgroundColor: '#f5a623',
+            pointBorderColor: '#0d0d0d',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            fill: true,
+            tension: 0.35,
+          },
+          {
+            label: '50% 기준선',
+            data: labels.map(() => 50),
+            borderColor: 'rgba(255,255,255,0.2)',
+            borderWidth: 1.5,
+            borderDash: [6, 5],
+            pointRadius: 0,
+            fill: false,
+            tension: 0,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            labels: { color: '#888', usePointStyle: true, pointStyleWidth: 10 },
+          },
+          tooltip: {
+            backgroundColor: '#1e1e1e',
+            borderColor: '#2a2a2a',
+            borderWidth: 1,
+            titleColor: '#e2e2e2',
+            bodyColor: '#aaa',
+            callbacks: {
+              label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: { color: '#666', maxRotation: 45 },
+            grid:  { color: '#1a1a1a' },
+          },
+          y: {
+            min: 0, max: 100,
+            ticks: { color: '#666', callback: v => v + '%', stepSize: 25 },
+            grid:  { color: '#1a1a1a' },
+          },
+        },
+      },
+    });
+  } catch (e) { console.error('chart error', e); }
+}
+
+/* ──────────────────────────────────────────
+   모달
+────────────────────────────────────────── */
+function openModal() {
+  if (!isAdmin) { toast('⚠️ 관리자 로그인이 필요합니다'); return; }
+  editId = null;
+  document.getElementById('modal-title').textContent = '＋ 예측 추가';
+  document.getElementById('modal-submit-btn').textContent = '추가하기';
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function openEditModal(id, asset, date, price, direction) {
+  editId = id;
+  document.getElementById('modal-title').textContent = '✏️ 예측 수정';
+  document.getElementById('modal-submit-btn').textContent = '수정하기';
+  document.getElementById('f-asset').value = asset;
+  document.getElementById('f-date').value  = date;
+  document.getElementById('f-price').value = price;
+  selDir(direction);
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('show');
+  resetForm();
+}
+function overlayClick(e) {
+  if (e.target === e.currentTarget) closeModal();
+}
+function resetForm() {
+  editId = null;
+  document.getElementById('f-asset').value = '';
+  document.getElementById('f-price').value = '';
+  selDirection = '';
+  document.getElementById('db-up').classList.remove('sel');
+  document.getElementById('db-down').classList.remove('sel');
+}
+function selDir(dir) {
+  selDirection = dir;
+  document.getElementById('db-up').classList.toggle('sel',   dir === 'UP');
+  document.getElementById('db-down').classList.toggle('sel', dir === 'DOWN');
+}
+
+async function submitForm() {
+  const asset = document.getElementById('f-asset').value;
+  const dt    = document.getElementById('f-date').value;
+  const price = document.getElementById('f-price').value;
+
+  if (!asset)        { toast('⚠️ 자산시장을 선택하세요');    return; }
+  if (!dt)           { toast('⚠️ 날짜를 입력하세요');         return; }
+  if (!price)        { toast('⚠️ 가격을 입력하세요');         return; }
+  if (!selDirection) { toast('⚠️ 방향성을 선택하세요');       return; }
+
+  const body = {
+    asset_market:  asset,
+    mention_date:  dt,
+    mention_price: parseFloat(price),
+    direction:     selDirection,
+  };
+
+  try {
+    const url    = editId ? `/api/predictions/${editId}` : '/api/predictions';
+    const method = editId ? 'PUT' : 'POST';
+    const r = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (d.success) {
+      closeModal();
+      await loadAll();
+      toast(editId ? '✅ 수정되었습니다' : '✅ 예측이 추가되었습니다');
+    } else {
+      toast('오류: ' + (d.error || '알 수 없는 오류'));
+    }
+  } catch (e) { toast('오류: ' + e.message); }
+}
+
+/* ──────────────────────────────────────────
+   인증 (관리자 로그인 / 로그아웃)
+────────────────────────────────────────── */
+async function checkAuth() {
+  try {
+    const r = await fetch('/api/auth-status');
+    const d = await r.json();
+    isAdmin = d.is_admin;
+    applyAdminUI();
+  } catch (e) { console.error(e); }
+}
+
+function applyAdminUI() {
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = isAdmin ? '' : 'none';
+  });
+  const loginBar = document.getElementById('btn-login-bar');
+  if (loginBar) loginBar.style.display = isAdmin ? 'none' : '';
+}
+
+function openLoginModal() {
+  document.getElementById('login-pw').value = '';
+  document.getElementById('login-overlay').classList.add('show');
+  setTimeout(() => document.getElementById('login-pw').focus(), 80);
+}
+function closeLoginModal() {
+  document.getElementById('login-overlay').classList.remove('show');
+}
+function loginOverlayClick(e) {
+  if (e.target === e.currentTarget) closeLoginModal();
+}
+
+async function doLogin() {
+  const pw = document.getElementById('login-pw').value;
+  if (!pw) return;
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      isAdmin = true;
+      closeLoginModal();
+      applyAdminUI();
+      await loadAll();
+      toast('✅ 관리자로 로그인했습니다');
+    } else {
+      toast('❌ ' + (d.error || '로그인 실패'));
+    }
+  } catch (e) { toast('오류: ' + e.message); }
+}
+
+async function doLogout() {
+  await fetch('/api/logout', { method: 'POST' });
+  isAdmin = false;
+  applyAdminUI();
+  await loadAll();
+  toast('로그아웃되었습니다');
+}
+
+/* ──────────────────────────────────────────
+   유틸
+────────────────────────────────────────── */
+function fmtNum(n) {
+  if (n == null) return '—';
+  return Number(n).toLocaleString('ko-KR', { maximumFractionDigits: 2 });
+}
+
+// ESC 키로 모달 닫기
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); closeLoginModal(); }
+});
+</script>
+</body>
+</html>
