@@ -113,6 +113,8 @@ def require_admin(f):
 #  데이터베이스
 # ─────────────────────────────────────────────
 def get_db():
+    db_dir = os.path.dirname(os.path.abspath(DATABASE))
+    os.makedirs(db_dir, exist_ok=True)
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
