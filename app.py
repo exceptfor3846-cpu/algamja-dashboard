@@ -83,7 +83,7 @@ except ImportError:
 
 DATABASE = "algamja.db"
 
-ASSET_LIST = ["S&P500", "NASDAQ", "KOSPI", "KOSDAQ", "비트코인", "환율(원/달러)", "금"]
+ASSET_LIST = ["S&P500", "NASDAQ", "KOSPI", "KOSDAQ", "비트코인", "환율(원/달러)", "금", "은"]
 
 ASSET_SYMBOLS = {
     "S&P500":      "^GSPC",
@@ -91,6 +91,7 @@ ASSET_SYMBOLS = {
     "KOSPI":       "^KS11",
     "KOSDAQ":      "^KQ11",
     "금":          "GC=F",
+    "은":          "SI=F",
     "환율(원/달러)": "KRW=X",
 }
 
