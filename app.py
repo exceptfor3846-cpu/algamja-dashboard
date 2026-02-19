@@ -240,14 +240,17 @@ def save_daily_index():
 # ─────────────────────────────────────────────
 #  텔레그램 전송
 # ─────────────────────────────────────────────
-def send_telegram(text: str) -> bool:
+def send_telegram(text: str, parse_mode: str = None) -> bool:
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHANNEL_ID:
         print("[telegram] ⚠️ 봇 토큰 또는 채널 ID가 설정되지 않았습니다 (config.py 확인)")
         return False
     try:
+        payload = {"chat_id": TELEGRAM_CHANNEL_ID, "text": text}
+        if parse_mode:
+            payload["parse_mode"] = parse_mode
         r = requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-            json={"chat_id": TELEGRAM_CHANNEL_ID, "text": text},
+            json=payload,
             timeout=10,
         )
         if r.ok:
@@ -281,6 +284,8 @@ def send_dashboard_report():
         algamja = round(overall["h"] / total * 100, 1) if total else 0
         now     = datetime.now().strftime("%Y-%m-%d %H:%M")
 
+        DASHBOARD_URL = "https://algamja-dashboard-production.up.railway.app/"
+
         lines = [
             "📊 알감자지수 대시보드",
             f"업데이트: {now}",
@@ -301,10 +306,11 @@ def send_dashboard_report():
 
         lines.append("")
         lines.append(f"🥔 종합 알감자지수: {algamja}%")
+        lines.append(f'🥔 자세한 알감자지수를 보고싶다면 : <a href="{DASHBOARD_URL}">알감자지수 대시보드 바로가기</a>')
 
         msg = "\n".join(lines)
         print(f"[report] 텔레그램 전송 시도 → 채널 {TELEGRAM_CHANNEL_ID}")
-        send_telegram(msg)
+        send_telegram(msg, parse_mode="HTML")
     except Exception as e:
         print(f"[report] ❌ 오류: {e}")
     finally:
