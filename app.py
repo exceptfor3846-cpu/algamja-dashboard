@@ -81,7 +81,24 @@ except ImportError:
     else:
         print("[config] ⚠️ config.py 없음, 환경 변수도 미설정 — 텔레그램 비활성화")
 
-DATABASE = os.environ.get("DATABASE_PATH", "algamja.db")
+# DB 경로 결정: 환경 변수 → 쓰기 가능 여부 확인 → 불가시 /tmp 대체
+def _resolve_db_path():
+    path = os.environ.get("DATABASE_PATH", "algamja.db")
+    db_dir = os.path.dirname(os.path.abspath(path))
+    try:
+        os.makedirs(db_dir, exist_ok=True)
+        # 실제 쓰기 가능 여부 테스트
+        test = os.path.join(db_dir, ".write_test")
+        with open(test, "w") as f:
+            f.write("ok")
+        os.remove(test)
+        return path
+    except (PermissionError, OSError):
+        fallback = os.path.join(os.path.dirname(os.path.abspath(__file__)), "algamja.db")
+        print(f"[db] '{db_dir}' 쓰기 불가 → 앱 디렉토리로 대체: {fallback}")
+        return fallback
+
+DATABASE = _resolve_db_path()
 
 ASSET_LIST = ["S&P500", "NASDAQ", "KOSPI", "KOSDAQ", "비트코인", "환율(원/달러)", "금", "은"]
 
@@ -113,8 +130,6 @@ def require_admin(f):
 #  데이터베이스
 # ─────────────────────────────────────────────
 def get_db():
-    db_dir = os.path.dirname(os.path.abspath(DATABASE))
-    os.makedirs(db_dir, exist_ok=True)
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
