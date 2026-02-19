@@ -686,5 +686,6 @@ if __name__ == "__main__":
     # 텔레그램 봇 (별도 스레드)
     threading.Thread(target=run_telegram_bot, daemon=True).start()
 
-    print("✅ 서버 준비 완료 → http://localhost:5000")
-    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+    port = int(os.environ.get("PORT", 5000))
+    print(f"✅ 서버 준비 완료 → http://0.0.0.0:{port}")
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
