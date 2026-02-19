@@ -675,8 +675,20 @@ def run_telegram_bot():
         application.add_handler(CommandHandler("add",    cmd_add))
         application.add_handler(CommandHandler("status", cmd_status))
         application.add_error_handler(error_handler)
-        print("[telegram] 봇 폴링 시작")
-        application.run_polling(drop_pending_updates=True)
+
+        async def _run():
+            await application.initialize()
+            await application.start()
+            await application.updater.start_polling(drop_pending_updates=True)
+            print("[telegram] 봇 폴링 시작")
+            await asyncio.sleep(float("inf"))
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(_run())
+        finally:
+            loop.close()
 
     except Exception as e:
         from telegram.error import Conflict
