@@ -105,6 +105,33 @@ def fetch_price(asset: str):
     return _yfinance_price(asset)
 
 
+def search_ticker_by_name(query: str, suffix: str = '') -> list:
+    """종목명으로 Yahoo Finance 검색 → [{ticker, name, exchange}] 반환"""
+    try:
+        r = requests.get(
+            "https://query2.finance.yahoo.com/v1/finance/search",
+            params={"q": query, "quotesCount": 10, "newsCount": 0},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10,
+        )
+        if not r.ok:
+            return []
+        results = []
+        for q in r.json().get("quotes", []):
+            symbol = q.get("symbol", "")
+            if q.get("quoteType") != "EQUITY":
+                continue
+            if suffix and not symbol.endswith(suffix):
+                continue
+            name     = q.get("longname") or q.get("shortname") or symbol
+            exchange = q.get("exchDisp", "")
+            results.append({"ticker": symbol, "name": name, "exchange": exchange})
+        return results
+    except Exception as e:
+        print(f"[search_ticker] {e}")
+        return []
+
+
 def validate_ticker(ticker: str) -> dict:
     """티커 유효성 검사 - 이름과 현재가 반환"""
     try:

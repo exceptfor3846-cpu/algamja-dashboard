@@ -497,15 +497,32 @@ tbody tr:hover td { background: rgba(255,255,255,.025); }
       </select>
     </div>
 
-    <!-- 개별종목 티커 입력 (개별종목 선택 시만 표시) -->
+    <!-- 개별종목 티커 입력 (NASDAQ/NYSE/S&P500/기타용) -->
     <div class="form-row" id="ticker-row" style="display:none">
-      <label id="ticker-label">종목코드</label>
+      <label id="ticker-label">티커</label>
       <div style="display:flex; gap:8px; align-items:center">
         <input type="text" id="f-ticker" placeholder="예: AAPL" style="flex:1; text-transform:uppercase"
                oninput="this.value=this.value.toUpperCase()" onblur="checkTicker()">
         <span id="ticker-status" style="font-size:0.85rem; white-space:nowrap"></span>
       </div>
-      <div id="ticker-hint" style="font-size:0.78rem; color:var(--text-muted); margin-top:4px"></div>
+      <div id="ticker-hint" style="font-size:0.78rem; color:var(--muted); margin-top:4px"></div>
+    </div>
+
+    <!-- 종목명 검색 (KOSPI/KOSDAQ용) -->
+    <div class="form-row" id="search-row" style="display:none">
+      <label id="search-label">종목명 검색</label>
+      <div style="position:relative">
+        <div style="display:flex; gap:8px; align-items:center">
+          <input type="text" id="f-search" placeholder="예: 삼성전자" style="flex:1" autocomplete="off"
+                 oninput="onSearchInput(this.value)">
+          <span id="search-status" style="font-size:0.85rem; white-space:nowrap; min-width:80px"></span>
+        </div>
+        <ul id="search-dropdown" style="display:none; position:absolute; z-index:200;
+            background:var(--card2); border:1px solid var(--border); border-radius:var(--radius);
+            width:100%; list-style:none; padding:4px 0; margin:2px 0 0;
+            max-height:220px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,.5)"></ul>
+      </div>
+      <div id="search-hint" style="font-size:0.78rem; color:var(--muted); margin-top:4px"></div>
     </div>
 
     <div class="form-row">
@@ -898,42 +915,111 @@ function openModal() {
 
 // ── 개별종목 티커 관련 ──────────────────────
 const CUSTOM_MARKETS = {
-  '__NASDAQ__': { label: '티커 (예: AAPL, TSLA, MSFT)',      hint: 'NASDAQ 티커를 대문자로 입력하세요',                        suffix: '', placeholder: '예: AAPL' },
-  '__NYSE__':   { label: '티커 (예: JPM, BAC, GS)',           hint: 'NYSE 티커를 대문자로 입력하세요',                          suffix: '', placeholder: '예: JPM' },
-  '__SP500__':  { label: '티커 (예: AAPL, MSFT, GOOGL)',      hint: 'S&P500 구성종목 티커를 대문자로 입력하세요',               suffix: '', placeholder: '예: AAPL' },
-  '__KOSPI__':  { label: '티커 (예: 005930.KS)',              hint: '종목코드 뒤에 .KS 붙여서 입력하세요 (삼성전자: 005930.KS)', suffix: '', placeholder: '예: 005930.KS' },
-  '__KOSDAQ__': { label: '티커 (예: 263750.KQ)',              hint: '종목코드 뒤에 .KQ 붙여서 입력하세요 (펄어비스: 263750.KQ)', suffix: '', placeholder: '예: 263750.KQ' },
-  '__OTHER__':  { label: 'yfinance 티커 (예: 9988.HK)',        hint: '거래소 접미사 포함하여 입력 (예: 종목코드.HK, .T, .L)',   suffix: '', placeholder: '예: 9988.HK' },
+  '__NASDAQ__': { label: '티커 (예: AAPL, TSLA, MSFT)',   hint: 'NASDAQ 티커를 대문자로 입력하세요',                      suffix: '', placeholder: '예: AAPL',       searchMode: false },
+  '__NYSE__':   { label: '티커 (예: JPM, BAC, GS)',        hint: 'NYSE 티커를 대문자로 입력하세요',                        suffix: '', placeholder: '예: JPM',        searchMode: false },
+  '__SP500__':  { label: '티커 (예: AAPL, MSFT, GOOGL)',  hint: 'S&P500 구성종목 티커를 대문자로 입력하세요',             suffix: '', placeholder: '예: AAPL',       searchMode: false },
+  '__KOSPI__':  { label: '종목명 검색',                    hint: '종목명을 입력하면 자동으로 검색됩니다 (예: 삼성전자, 현대차)', suffix: '.KS', placeholder: '예: 삼성전자', searchMode: true  },
+  '__KOSDAQ__': { label: '종목명 검색',                    hint: '종목명을 입력하면 자동으로 검색됩니다 (예: 카카오, 셀트리온)',  suffix: '.KQ', placeholder: '예: 카카오',   searchMode: true  },
+  '__OTHER__':  { label: 'yfinance 티커 (예: 9988.HK)',   hint: '거래소 접미사 포함하여 입력 (예: 종목코드.HK, .T, .L)', suffix: '', placeholder: '예: 9988.HK',    searchMode: false },
 };
 
+// 검색 모드에서 선택된 실제 티커
+let _selectedTicker = '';
+let _searchTimer    = null;
+
 function onAssetChange(val) {
-  const isCustom = val in CUSTOM_MARKETS;
-  document.getElementById('ticker-row').style.display = isCustom ? '' : 'none';
+  const m        = CUSTOM_MARKETS[val];
+  const isCustom = !!m;
+  const isSearch = isCustom && m.searchMode;
+
+  document.getElementById('ticker-row').style.display = (isCustom && !isSearch) ? '' : 'none';
+  document.getElementById('search-row').style.display = (isCustom && isSearch)  ? '' : 'none';
+
   if (isCustom) {
-    const m = CUSTOM_MARKETS[val];
-    document.getElementById('ticker-label').textContent  = m.label;
-    document.getElementById('ticker-hint').textContent   = m.hint;
-    document.getElementById('f-ticker').placeholder      = m.placeholder;
-    document.getElementById('f-ticker').value = '';
-    document.getElementById('ticker-status').textContent = '';
+    if (isSearch) {
+      document.getElementById('search-label').textContent      = m.label;
+      document.getElementById('search-hint').textContent       = m.hint;
+      document.getElementById('f-search').placeholder          = m.placeholder;
+      document.getElementById('f-search').value                = '';
+      document.getElementById('search-status').textContent     = '';
+      document.getElementById('search-dropdown').style.display = 'none';
+      _selectedTicker = '';
+    } else {
+      document.getElementById('ticker-label').textContent  = m.label;
+      document.getElementById('ticker-hint').textContent   = m.hint;
+      document.getElementById('f-ticker').placeholder      = m.placeholder;
+      document.getElementById('f-ticker').value            = '';
+      document.getElementById('ticker-status').textContent = '';
+    }
   }
 }
 
+// ── 종목명 검색 (KOSPI/KOSDAQ) ─────────────────
+function onSearchInput(val) {
+  _selectedTicker = '';
+  document.getElementById('search-status').textContent = '';
+  clearTimeout(_searchTimer);
+  const dd = document.getElementById('search-dropdown');
+  if (!val.trim()) { dd.style.display = 'none'; return; }
+  _searchTimer = setTimeout(() => doSearch(val.trim()), 450);
+}
+
+async function doSearch(query) {
+  const market = document.getElementById('f-asset').value;
+  const suffix = CUSTOM_MARKETS[market]?.suffix ?? '';
+  try {
+    const r = await fetch(`/api/search-ticker-name?q=${encodeURIComponent(query)}&suffix=${encodeURIComponent(suffix)}`);
+    const results = await r.json();
+    const dd = document.getElementById('search-dropdown');
+    if (!results.length) {
+      dd.innerHTML = '<li style="padding:8px 12px; color:var(--muted)">검색 결과가 없습니다</li>';
+    } else {
+      dd.innerHTML = results.map(res => {
+        const safeName   = res.name.replace(/'/g, "\\'");
+        const safeTicket = res.ticker;
+        return `<li style="padding:9px 14px; cursor:pointer; border-bottom:1px solid var(--border)"
+                    onmouseover="this.style.background='var(--card)'"
+                    onmouseout="this.style.background=''"
+                    onmousedown="selectSearchResult('${safeTicket}','${safeName}','${res.exchange}')">
+                  <strong>${res.name}</strong>
+                  <span style="color:var(--muted); font-size:0.82rem; margin-left:6px">${res.ticker} · ${res.exchange}</span>
+                </li>`;
+      }).join('');
+    }
+    dd.style.display = 'block';
+  } catch (e) { /* ignore */ }
+}
+
+function selectSearchResult(ticker, name, exchange) {
+  _selectedTicker = ticker;
+  document.getElementById('f-search').value            = name;
+  document.getElementById('search-dropdown').style.display = 'none';
+  const statusEl = document.getElementById('search-status');
+  statusEl.textContent = `✅ ${ticker} (${exchange})`;
+  statusEl.style.color = 'var(--up)';
+}
+
+// 외부 클릭 시 드롭다운 닫기
+document.addEventListener('click', e => {
+  const dd = document.getElementById('search-dropdown');
+  if (dd && !dd.contains(e.target) && e.target.id !== 'f-search') {
+    dd.style.display = 'none';
+  }
+});
+
 async function checkTicker() {
   const market = document.getElementById('f-asset').value;
-  if (!(market in CUSTOM_MARKETS)) return;
-  const raw    = document.getElementById('f-ticker').value.trim().toUpperCase();
+  if (!(market in CUSTOM_MARKETS) || CUSTOM_MARKETS[market].searchMode) return;
+  const raw      = document.getElementById('f-ticker').value.trim().toUpperCase();
   if (!raw) return;
-  const suffix = CUSTOM_MARKETS[market].suffix;
-  const ticker = raw.endsWith(suffix) ? raw : raw + suffix;
   const statusEl = document.getElementById('ticker-status');
   statusEl.textContent = '⏳ 확인 중...';
-  statusEl.style.color = 'var(--text-muted)';
+  statusEl.style.color = 'var(--muted)';
   try {
     const r = await fetch('/api/validate-ticker', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticker }),
+      body: JSON.stringify({ ticker: raw }),
     });
     const d = await r.json();
     if (d.valid) {
@@ -950,12 +1036,9 @@ async function checkTicker() {
 
 function getAssetMarket() {
   const sel = document.getElementById('f-asset').value;
-  if (sel in CUSTOM_MARKETS) {
-    const raw    = document.getElementById('f-ticker').value.trim().toUpperCase();
-    const suffix = CUSTOM_MARKETS[sel].suffix;
-    return raw.endsWith(suffix) ? raw : raw + suffix;
-  }
-  return sel;
+  if (!(sel in CUSTOM_MARKETS)) return sel;
+  if (CUSTOM_MARKETS[sel].searchMode) return _selectedTicker;
+  return document.getElementById('f-ticker').value.trim().toUpperCase();
 }
 
 // ── 모달 함수 ────────────────────────────────
@@ -969,6 +1052,7 @@ function openEditModal(id, asset, date, price, direction) {
   if (fixedAssets.includes(asset)) {
     document.getElementById('f-asset').value = asset;
     document.getElementById('ticker-row').style.display = 'none';
+    document.getElementById('search-row').style.display = 'none';
   } else {
     // 개별종목: 거래소 추정
     let market = '__OTHER__';
@@ -977,8 +1061,15 @@ function openEditModal(id, asset, date, price, direction) {
     else if (!asset.includes('.'))  market = '__NASDAQ__';
     document.getElementById('f-asset').value = market;
     onAssetChange(market);
-    const suffix = CUSTOM_MARKETS[market].suffix;
-    document.getElementById('f-ticker').value = suffix ? asset.replace(suffix, '') : asset;
+    if (CUSTOM_MARKETS[market].searchMode) {
+      // 검색 모드: 티커를 그대로 표시 (사용자가 재검색 가능)
+      _selectedTicker = asset;
+      document.getElementById('f-search').value        = asset;
+      document.getElementById('search-status').textContent = '✅ 선택됨';
+      document.getElementById('search-status').style.color = 'var(--up)';
+    } else {
+      document.getElementById('f-ticker').value = asset;
+    }
   }
   document.getElementById('f-date').value  = date;
   document.getElementById('f-price').value = price;
@@ -995,11 +1086,16 @@ function overlayClick(e) {
 }
 function resetForm() {
   editId = null;
-  document.getElementById('f-asset').value = '';
-  document.getElementById('f-price').value = '';
+  _selectedTicker = '';
+  document.getElementById('f-asset').value  = '';
+  document.getElementById('f-price').value  = '';
   document.getElementById('f-ticker').value = '';
-  document.getElementById('ticker-row').style.display = 'none';
-  document.getElementById('ticker-status').textContent = '';
+  document.getElementById('f-search').value = '';
+  document.getElementById('ticker-row').style.display      = 'none';
+  document.getElementById('search-row').style.display      = 'none';
+  document.getElementById('search-dropdown').style.display = 'none';
+  document.getElementById('ticker-status').textContent     = '';
+  document.getElementById('search-status').textContent     = '';
   selDirection = '';
   document.getElementById('db-up').classList.remove('sel');
   document.getElementById('db-down').classList.remove('sel');

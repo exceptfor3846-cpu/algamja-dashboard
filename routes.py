@@ -9,7 +9,7 @@ from flask import Blueprint, render_template, request, jsonify, session
 
 from settings import ADMIN_PASSWORD
 from database import get_db, save_daily_index, _save_daily_index
-from prices import ASSET_LIST, update_all_prices, validate_ticker
+from prices import ASSET_LIST, update_all_prices, validate_ticker, search_ticker_by_name
 from telegram_bot import send_dashboard_report
 from scheduler import reset_scheduler
 
@@ -70,6 +70,16 @@ def api_get_predictions():
         })
     finally:
         conn.close()
+
+
+@bp.route("/api/search-ticker-name")
+def api_search_ticker_name():
+    """종목명 검색 (KOSPI/KOSDAQ용 — 이름 → 티커 목록 반환)"""
+    q      = request.args.get("q", "").strip()
+    suffix = request.args.get("suffix", "")
+    if not q:
+        return jsonify([])
+    return jsonify(search_ticker_by_name(q, suffix))
 
 
 @bp.route("/api/validate-ticker", methods=["POST"])
