@@ -95,16 +95,39 @@ def _bitcoin_price():
 
 
 def fetch_price(asset: str):
+    """고정 자산 또는 개별종목 티커 모두 처리"""
     if asset == "비트코인":
         return _bitcoin_price()
     symbol = ASSET_SYMBOLS.get(asset)
-    return _yfinance_price(symbol) if symbol else None
+    if symbol:
+        return _yfinance_price(symbol)
+    # 고정 자산 목록에 없으면 → 티커로 직접 조회 (개별종목)
+    return _yfinance_price(asset)
+
+
+def validate_ticker(ticker: str) -> dict:
+    """티커 유효성 검사 - 이름과 현재가 반환"""
+    try:
+        t = yf.Ticker(ticker)
+        info = t.fast_info
+        price = getattr(info, "last_price", None)
+        if price is None:
+            hist = t.history(period="5d")
+            if not hist.empty:
+                price = round(float(hist["Close"].dropna().iloc[-1]), 2)
+        name = getattr(info, "exchange", ticker)
+        if price:
+            return {"valid": True, "price": round(float(price), 2), "exchange": name}
+    except Exception:
+        pass
+    return {"valid": False}
 
 
 def update_all_prices():
     print(f"[{datetime.now():%H:%M:%S}] 가격 업데이트 시작...")
     conn = get_db()
     try:
+        # 1) 고정 자산 업데이트
         for asset in ASSET_LIST:
             price = fetch_price(asset)
             if price is not None:
@@ -113,6 +136,24 @@ def update_all_prices():
                     (asset, price, datetime.now().isoformat()),
                 )
                 print(f"  {asset}: {price:,.2f}")
+
+        # 2) 예측 테이블에 있는 개별종목 티커 업데이트
+        placeholders = ",".join("?" * len(ASSET_LIST))
+        custom_rows = conn.execute(
+            f"SELECT DISTINCT asset_market FROM predictions WHERE asset_market NOT IN ({placeholders})",
+            ASSET_LIST,
+        ).fetchall()
+
+        for row in custom_rows:
+            ticker = row["asset_market"]
+            price = _yfinance_price(ticker)
+            if price is not None:
+                conn.execute(
+                    "INSERT OR REPLACE INTO prices (asset_market, current_price, updated_at) VALUES (?,?,?)",
+                    (ticker, price, datetime.now().isoformat()),
+                )
+                print(f"  {ticker}: {price:,.2f}")
+
         conn.commit()
         _save_daily_index(conn)
     except Exception as e:

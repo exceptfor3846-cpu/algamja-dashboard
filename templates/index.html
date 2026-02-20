@@ -474,17 +474,37 @@ tbody tr:hover td { background: rgba(255,255,255,.025); }
 
     <div class="form-row">
       <label>자산시장</label>
-      <select id="f-asset">
+      <select id="f-asset" onchange="onAssetChange(this.value)">
         <option value="">— 선택하세요 —</option>
-        <option>S&amp;P500</option>
-        <option>NASDAQ</option>
-        <option>KOSPI</option>
-        <option>KOSDAQ</option>
-        <option>비트코인</option>
-        <option>환율(원/달러)</option>
-        <option>금</option>
-        <option>은</option>
+        <optgroup label="── 지수 / 기타 ──">
+          <option>S&amp;P500</option>
+          <option>NASDAQ</option>
+          <option>KOSPI</option>
+          <option>KOSDAQ</option>
+          <option>비트코인</option>
+          <option>환율(원/달러)</option>
+          <option>금</option>
+          <option>은</option>
+        </optgroup>
+        <optgroup label="── 개별종목 ──">
+          <option value="__NASDAQ__">NASDAQ 개별종목</option>
+          <option value="__NYSE__">NYSE 개별종목</option>
+          <option value="__KOSPI__">KOSPI 개별종목</option>
+          <option value="__KOSDAQ__">KOSDAQ 개별종목</option>
+          <option value="__OTHER__">기타 거래소 개별종목</option>
+        </optgroup>
       </select>
+    </div>
+
+    <!-- 개별종목 티커 입력 (개별종목 선택 시만 표시) -->
+    <div class="form-row" id="ticker-row" style="display:none">
+      <label id="ticker-label">종목코드</label>
+      <div style="display:flex; gap:8px; align-items:center">
+        <input type="text" id="f-ticker" placeholder="예: AAPL" style="flex:1; text-transform:uppercase"
+               oninput="this.value=this.value.toUpperCase()" onblur="checkTicker()">
+        <span id="ticker-status" style="font-size:0.85rem; white-space:nowrap"></span>
+      </div>
+      <div id="ticker-hint" style="font-size:0.78rem; color:var(--text-muted); margin-top:4px"></div>
     </div>
 
     <div class="form-row">
@@ -875,11 +895,88 @@ function openModal() {
   document.getElementById('modal-overlay').classList.add('show');
 }
 
+// ── 개별종목 티커 관련 ──────────────────────
+const CUSTOM_MARKETS = {
+  '__NASDAQ__': { label: '티커 코드 (예: AAPL, TSLA, MSFT)',  hint: 'NASDAQ 티커를 대문자로 입력하세요', suffix: '' },
+  '__NYSE__':   { label: '티커 코드 (예: JPM, BAC, GS)',       hint: 'NYSE 티커를 대문자로 입력하세요',   suffix: '' },
+  '__KOSPI__':  { label: '종목코드 6자리 (예: 005930)',         hint: '코스피 종목코드 입력 → 자동으로 .KS 추가', suffix: '.KS' },
+  '__KOSDAQ__': { label: '종목코드 6자리 (예: 263750)',         hint: '코스닥 종목코드 입력 → 자동으로 .KQ 추가', suffix: '.KQ' },
+  '__OTHER__':  { label: 'yfinance 티커 (예: 9988.HK)',        hint: '거래소 접미사 포함하여 입력 (예: 종목코드.HK, .T, .L)', suffix: '' },
+};
+
+function onAssetChange(val) {
+  const isCustom = val in CUSTOM_MARKETS;
+  document.getElementById('ticker-row').style.display = isCustom ? '' : 'none';
+  if (isCustom) {
+    const m = CUSTOM_MARKETS[val];
+    document.getElementById('ticker-label').textContent = m.label;
+    document.getElementById('ticker-hint').textContent  = m.hint;
+    document.getElementById('f-ticker').value  = '';
+    document.getElementById('ticker-status').textContent = '';
+  }
+}
+
+async function checkTicker() {
+  const market = document.getElementById('f-asset').value;
+  if (!(market in CUSTOM_MARKETS)) return;
+  const raw    = document.getElementById('f-ticker').value.trim().toUpperCase();
+  if (!raw) return;
+  const suffix = CUSTOM_MARKETS[market].suffix;
+  const ticker = raw.endsWith(suffix) ? raw : raw + suffix;
+  const statusEl = document.getElementById('ticker-status');
+  statusEl.textContent = '⏳ 확인 중...';
+  statusEl.style.color = 'var(--text-muted)';
+  try {
+    const r = await fetch('/api/validate-ticker', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticker }),
+    });
+    const d = await r.json();
+    if (d.valid) {
+      statusEl.textContent = `✅ ${d.price?.toLocaleString() ?? ''} (${d.exchange ?? ''})`;
+      statusEl.style.color = 'var(--up)';
+    } else {
+      statusEl.textContent = '❌ 티커를 찾을 수 없습니다';
+      statusEl.style.color = 'var(--down)';
+    }
+  } catch (e) {
+    statusEl.textContent = '';
+  }
+}
+
+function getAssetMarket() {
+  const sel = document.getElementById('f-asset').value;
+  if (sel in CUSTOM_MARKETS) {
+    const raw    = document.getElementById('f-ticker').value.trim().toUpperCase();
+    const suffix = CUSTOM_MARKETS[sel].suffix;
+    return raw.endsWith(suffix) ? raw : raw + suffix;
+  }
+  return sel;
+}
+
+// ── 모달 함수 ────────────────────────────────
 function openEditModal(id, asset, date, price, direction) {
   editId = id;
   document.getElementById('modal-title').textContent = '✏️ 예측 수정';
   document.getElementById('modal-submit-btn').textContent = '수정하기';
-  document.getElementById('f-asset').value = asset;
+
+  // 고정 자산 여부 확인
+  const fixedAssets = ['S&P500','NASDAQ','KOSPI','KOSDAQ','비트코인','환율(원/달러)','금','은'];
+  if (fixedAssets.includes(asset)) {
+    document.getElementById('f-asset').value = asset;
+    document.getElementById('ticker-row').style.display = 'none';
+  } else {
+    // 개별종목: 거래소 추정
+    let market = '__OTHER__';
+    if (asset.endsWith('.KS'))      market = '__KOSPI__';
+    else if (asset.endsWith('.KQ')) market = '__KOSDAQ__';
+    else if (!asset.includes('.'))  market = '__NASDAQ__';
+    document.getElementById('f-asset').value = market;
+    onAssetChange(market);
+    const suffix = CUSTOM_MARKETS[market].suffix;
+    document.getElementById('f-ticker').value = suffix ? asset.replace(suffix, '') : asset;
+  }
   document.getElementById('f-date').value  = date;
   document.getElementById('f-price').value = price;
   selDir(direction);
@@ -897,6 +994,9 @@ function resetForm() {
   editId = null;
   document.getElementById('f-asset').value = '';
   document.getElementById('f-price').value = '';
+  document.getElementById('f-ticker').value = '';
+  document.getElementById('ticker-row').style.display = 'none';
+  document.getElementById('ticker-status').textContent = '';
   selDirection = '';
   document.getElementById('db-up').classList.remove('sel');
   document.getElementById('db-down').classList.remove('sel');
@@ -908,7 +1008,7 @@ function selDir(dir) {
 }
 
 async function submitForm() {
-  const asset = document.getElementById('f-asset').value;
+  const asset = getAssetMarket();
   const dt    = document.getElementById('f-date').value;
   const price = document.getElementById('f-price').value;
 

@@ -9,7 +9,7 @@ from flask import Blueprint, render_template, request, jsonify, session
 
 from settings import ADMIN_PASSWORD
 from database import get_db, save_daily_index, _save_daily_index
-from prices import ASSET_LIST, update_all_prices
+from prices import ASSET_LIST, update_all_prices, validate_ticker
 from telegram_bot import send_dashboard_report
 from scheduler import reset_scheduler
 
@@ -72,6 +72,17 @@ def api_get_predictions():
         conn.close()
 
 
+@bp.route("/api/validate-ticker", methods=["POST"])
+@require_admin
+def api_validate_ticker():
+    """개별종목 티커 유효성 검사"""
+    ticker = (request.json or {}).get("ticker", "").strip().upper()
+    if not ticker:
+        return jsonify({"valid": False, "error": "티커를 입력하세요"})
+    result = validate_ticker(ticker)
+    return jsonify(result)
+
+
 @bp.route("/api/predictions", methods=["POST"])
 @require_admin
 def api_add_prediction():
@@ -80,8 +91,8 @@ def api_add_prediction():
         if field not in d:
             return jsonify({"error": f"{field} 필드가 필요합니다"}), 400
 
-    if d["asset_market"] not in ASSET_LIST:
-        return jsonify({"error": "유효하지 않은 자산시장"}), 400
+    if not d["asset_market"].strip():
+        return jsonify({"error": "자산시장을 선택하거나 티커를 입력하세요"}), 400
     if d["direction"] not in ("UP", "DOWN"):
         return jsonify({"error": "방향성은 UP 또는 DOWN이어야 합니다"}), 400
 
@@ -106,8 +117,8 @@ def api_update_prediction(pid):
     for field in ("asset_market", "mention_date", "mention_price", "direction"):
         if field not in d:
             return jsonify({"error": f"{field} 필드가 필요합니다"}), 400
-    if d["asset_market"] not in ASSET_LIST:
-        return jsonify({"error": "유효하지 않은 자산시장"}), 400
+    if not d["asset_market"].strip():
+        return jsonify({"error": "자산시장을 선택하거나 티커를 입력하세요"}), 400
     if d["direction"] not in ("UP", "DOWN"):
         return jsonify({"error": "방향성은 UP 또는 DOWN이어야 합니다"}), 400
 
