@@ -489,6 +489,7 @@ tbody tr:hover td { background: rgba(255,255,255,.025); }
         <optgroup label="── 개별종목 ──">
           <option value="__NASDAQ__">NASDAQ 개별종목</option>
           <option value="__NYSE__">NYSE 개별종목</option>
+          <option value="__SP500__">S&amp;P500 개별종목</option>
           <option value="__KOSPI__">KOSPI 개별종목</option>
           <option value="__KOSDAQ__">KOSDAQ 개별종목</option>
           <option value="__OTHER__">기타 거래소 개별종목</option>
@@ -897,11 +898,12 @@ function openModal() {
 
 // ── 개별종목 티커 관련 ──────────────────────
 const CUSTOM_MARKETS = {
-  '__NASDAQ__': { label: '티커 코드 (예: AAPL, TSLA, MSFT)',  hint: 'NASDAQ 티커를 대문자로 입력하세요', suffix: '' },
-  '__NYSE__':   { label: '티커 코드 (예: JPM, BAC, GS)',       hint: 'NYSE 티커를 대문자로 입력하세요',   suffix: '' },
-  '__KOSPI__':  { label: '종목코드 6자리 (예: 005930)',         hint: '코스피 종목코드 입력 → 자동으로 .KS 추가', suffix: '.KS' },
-  '__KOSDAQ__': { label: '종목코드 6자리 (예: 263750)',         hint: '코스닥 종목코드 입력 → 자동으로 .KQ 추가', suffix: '.KQ' },
-  '__OTHER__':  { label: 'yfinance 티커 (예: 9988.HK)',        hint: '거래소 접미사 포함하여 입력 (예: 종목코드.HK, .T, .L)', suffix: '' },
+  '__NASDAQ__': { label: '티커 (예: AAPL, TSLA, MSFT)',      hint: 'NASDAQ 티커를 대문자로 입력하세요',                        suffix: '', placeholder: '예: AAPL' },
+  '__NYSE__':   { label: '티커 (예: JPM, BAC, GS)',           hint: 'NYSE 티커를 대문자로 입력하세요',                          suffix: '', placeholder: '예: JPM' },
+  '__SP500__':  { label: '티커 (예: AAPL, MSFT, GOOGL)',      hint: 'S&P500 구성종목 티커를 대문자로 입력하세요',               suffix: '', placeholder: '예: AAPL' },
+  '__KOSPI__':  { label: '티커 (예: 005930.KS)',              hint: '종목코드 뒤에 .KS 붙여서 입력하세요 (삼성전자: 005930.KS)', suffix: '', placeholder: '예: 005930.KS' },
+  '__KOSDAQ__': { label: '티커 (예: 263750.KQ)',              hint: '종목코드 뒤에 .KQ 붙여서 입력하세요 (펄어비스: 263750.KQ)', suffix: '', placeholder: '예: 263750.KQ' },
+  '__OTHER__':  { label: 'yfinance 티커 (예: 9988.HK)',        hint: '거래소 접미사 포함하여 입력 (예: 종목코드.HK, .T, .L)',   suffix: '', placeholder: '예: 9988.HK' },
 };
 
 function onAssetChange(val) {
@@ -909,9 +911,10 @@ function onAssetChange(val) {
   document.getElementById('ticker-row').style.display = isCustom ? '' : 'none';
   if (isCustom) {
     const m = CUSTOM_MARKETS[val];
-    document.getElementById('ticker-label').textContent = m.label;
-    document.getElementById('ticker-hint').textContent  = m.hint;
-    document.getElementById('f-ticker').value  = '';
+    document.getElementById('ticker-label').textContent  = m.label;
+    document.getElementById('ticker-hint').textContent   = m.hint;
+    document.getElementById('f-ticker').placeholder      = m.placeholder;
+    document.getElementById('f-ticker').value = '';
     document.getElementById('ticker-status').textContent = '';
   }
 }
