@@ -6,34 +6,55 @@ import requests
 from datetime import datetime
 
 from database import get_db
-from settings import TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
+from settings import (
+    TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID,
+    NOTIFY_BOT_TOKEN, NOTIFY_CHANNEL_ID,
+)
 from prices import ASSET_LIST
 
 DASHBOARD_URL = "https://algamja-dashboard-production.up.railway.app/"
 
 
-def send_telegram(text: str, parse_mode: str = None) -> bool:
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHANNEL_ID:
-        print("[telegram] ⚠️ 봇 토큰 또는 채널 ID가 설정되지 않았습니다 (config.py 확인)")
-        return False
+def _send_message(token: str, channel: str, text: str, parse_mode: str = None) -> bool:
+    """공통 메시지 전송 헬퍼"""
     try:
-        payload = {"chat_id": TELEGRAM_CHANNEL_ID, "text": text}
+        payload = {"chat_id": channel, "text": text}
         if parse_mode:
             payload["parse_mode"] = parse_mode
         r = requests.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            f"https://api.telegram.org/bot{token}/sendMessage",
             json=payload,
             timeout=10,
         )
-        if r.ok:
-            print("[telegram] ✅ 채널 전송 성공")
-        else:
+        if not r.ok:
             resp = r.json()
-            print(f"[telegram] ❌ 전송 실패 ({r.status_code}): {resp.get('description', r.text)}")
+            print(f"[telegram] 전송 실패 ({r.status_code}): {resp.get('description', r.text)}")
         return r.ok
     except Exception as e:
-        print(f"[telegram] ❌ 예외: {e}")
+        print(f"[telegram] 예외: {e}")
         return False
+
+
+def send_telegram(text: str, parse_mode: str = None) -> bool:
+    """대시보드 알람 채널로 전송 (주기적 리포트용)"""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHANNEL_ID:
+        print("[telegram] ⚠️ 대시보드 봇 토큰/채널이 설정되지 않았습니다 (config.py 확인)")
+        return False
+    ok = _send_message(TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID, text, parse_mode)
+    if ok:
+        print("[telegram] ✅ 대시보드 채널 전송 성공")
+    return ok
+
+
+def send_notify(text: str, parse_mode: str = None) -> bool:
+    """작업 완료 알람 채널로 전송 (Claude 작업 완료 보고용)"""
+    if not NOTIFY_BOT_TOKEN or not NOTIFY_CHANNEL_ID:
+        print("[telegram] ⚠️ 알림 봇 토큰/채널이 설정되지 않았습니다 (config.py 확인)")
+        return False
+    ok = _send_message(NOTIFY_BOT_TOKEN, NOTIFY_CHANNEL_ID, text, parse_mode)
+    if ok:
+        print("[telegram] ✅ 작업완료 채널 전송 성공")
+    return ok
 
 
 def send_dashboard_report():
