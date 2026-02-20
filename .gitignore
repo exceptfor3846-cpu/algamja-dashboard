@@ -32,3 +32,10 @@ Thumbs.db
 # 임시 파일
 *.tmp
 *.bak
+
+# Claude Code 로컬 설정
+.claude/
+
+# 로컬 전용 파일 (보안/불필요)
+venvScriptsactivate.txt
+프로그램\ 정보.txt
