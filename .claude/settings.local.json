@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tasklist:*)",
+      "Bash(cmd /c \"taskkill /F /PID 32092 /PID 44028 /PID 28676 /PID 18372 /PID 43232 /PID 43072\")",
+      "Bash(cmd /c \"wmic process where \"\"name=''python.exe''\"\" delete\")",
+      "Bash(cmd /c \"gh --version\")",
+      "Bash(cmd /c \"git --version\")",
+      "Bash(where git:*)",
+      "Bash(where:*)",
+      "Bash(git init:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
