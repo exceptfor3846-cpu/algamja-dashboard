@@ -38,6 +38,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS predictions (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             asset_market  TEXT    NOT NULL,
+            ticker        TEXT,
             mention_date  TEXT    NOT NULL,
             mention_price REAL    NOT NULL,
             direction     TEXT    NOT NULL,
@@ -65,6 +66,11 @@ def init_db():
         );
     """)
     conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('update_interval', '5')")
+    # 기존 DB 마이그레이션: ticker 컬럼이 없으면 추가
+    try:
+        conn.execute("ALTER TABLE predictions ADD COLUMN ticker TEXT")
+    except Exception:
+        pass  # 이미 존재하면 무시
     conn.commit()
     conn.close()
 

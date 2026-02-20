@@ -47,7 +47,7 @@ def api_get_predictions():
     conn = get_db()
     try:
         rows = conn.execute(
-            """SELECT p.id, p.asset_market, p.mention_date, p.mention_price,
+            """SELECT p.id, p.asset_market, p.ticker, p.mention_date, p.mention_price,
                       p.direction, p.hit, p.miss, p.created_at,
                       pr.current_price, pr.updated_at AS price_updated
                FROM predictions p
@@ -106,11 +106,12 @@ def api_add_prediction():
     if d["direction"] not in ("UP", "DOWN"):
         return jsonify({"error": "방향성은 UP 또는 DOWN이어야 합니다"}), 400
 
+    ticker = (d.get("ticker") or "").strip() or None  # 없으면 NULL로 저장
     conn = get_db()
     try:
         conn.execute(
-            "INSERT INTO predictions (asset_market, mention_date, mention_price, direction) VALUES (?,?,?,?)",
-            (d["asset_market"], d["mention_date"], float(d["mention_price"]), d["direction"]),
+            "INSERT INTO predictions (asset_market, ticker, mention_date, mention_price, direction) VALUES (?,?,?,?,?)",
+            (d["asset_market"], ticker, d["mention_date"], float(d["mention_price"]), d["direction"]),
         )
         conn.commit()
         return jsonify({"success": True})
@@ -128,15 +129,16 @@ def api_update_prediction(pid):
         if field not in d:
             return jsonify({"error": f"{field} 필드가 필요합니다"}), 400
     if not d["asset_market"].strip():
-        return jsonify({"error": "자산시장을 선택하거나 티커를 입력하세요"}), 400
+        return jsonify({"error": "자산시장을 선택하거나 종목명을 입력하세요"}), 400
     if d["direction"] not in ("UP", "DOWN"):
         return jsonify({"error": "방향성은 UP 또는 DOWN이어야 합니다"}), 400
 
+    ticker = (d.get("ticker") or "").strip() or None
     conn = get_db()
     try:
         conn.execute(
-            "UPDATE predictions SET asset_market=?, mention_date=?, mention_price=?, direction=? WHERE id=?",
-            (d["asset_market"], d["mention_date"], float(d["mention_price"]), d["direction"], pid),
+            "UPDATE predictions SET asset_market=?, ticker=?, mention_date=?, mention_price=?, direction=? WHERE id=?",
+            (d["asset_market"], ticker, d["mention_date"], float(d["mention_price"]), d["direction"], pid),
         )
         conn.commit()
         return jsonify({"success": True})

@@ -106,30 +106,64 @@ def fetch_price(asset: str):
 
 
 def search_ticker_by_name(query: str, suffix: str = '') -> list:
-    """종목명으로 Yahoo Finance 검색 → [{ticker, name, exchange}] 반환"""
-    try:
-        r = requests.get(
-            "https://query2.finance.yahoo.com/v1/finance/search",
-            params={"q": query, "quotesCount": 10, "newsCount": 0},
-            headers={"User-Agent": "Mozilla/5.0"},
-            timeout=10,
-        )
-        if not r.ok:
-            return []
-        results = []
-        for q in r.json().get("quotes", []):
-            symbol = q.get("symbol", "")
-            if q.get("quoteType") != "EQUITY":
-                continue
-            if suffix and not symbol.endswith(suffix):
-                continue
-            name     = q.get("longname") or q.get("shortname") or symbol
-            exchange = q.get("exchDisp", "")
-            results.append({"ticker": symbol, "name": name, "exchange": exchange})
-        return results
-    except Exception as e:
-        print(f"[search_ticker] {e}")
+    """
+    종목명으로 검색 → [{ticker, name, exchange}] 반환
+    - KOSPI/KOSDAQ(.KS/.KQ): 로컬 한국 종목 사전 사용 (Yahoo Finance는 한글 미지원)
+    - 그 외: Yahoo Finance 검색
+    """
+    from korean_stocks import search_korean_stock
+
+    # 1) 한국 주식: 로컬 사전 검색 (한글 입력 지원)
+    if suffix in (".KS", ".KQ"):
+        results = search_korean_stock(query, suffix)
+        if results:
+            return results
+        # 로컬에 없으면 종목코드 직접 시도 (예: "005930" 입력)
+        ticker_candidate = query.upper()
+        if not ticker_candidate.endswith(suffix):
+            ticker_candidate += suffix
+        test = validate_ticker(ticker_candidate)
+        if test.get("valid"):
+            return [{"ticker": ticker_candidate, "name": ticker_candidate, "exchange": suffix.replace(".", "")}]
         return []
+
+    # 2) 해외 주식: Yahoo Finance 검색 (영어 쿼리)
+    _headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept": "application/json, text/plain, */*",
+        "Referer": "https://finance.yahoo.com/",
+    }
+    for base_url in [
+        "https://query1.finance.yahoo.com/v1/finance/search",
+        "https://query2.finance.yahoo.com/v1/finance/search",
+    ]:
+        try:
+            r = requests.get(
+                base_url,
+                params={"q": query, "quotesCount": 10, "newsCount": 0, "enableFuzzyQuery": False},
+                headers=_headers,
+                timeout=10,
+            )
+            if not r.ok:
+                continue
+            results = []
+            for q in r.json().get("quotes", []):
+                symbol = q.get("symbol", "")
+                if q.get("quoteType") != "EQUITY":
+                    continue
+                if suffix and not symbol.endswith(suffix):
+                    continue
+                name     = q.get("longname") or q.get("shortname") or symbol
+                exchange = q.get("exchDisp", "")
+                results.append({"ticker": symbol, "name": name, "exchange": exchange})
+            return results
+        except Exception as e:
+            print(f"[search_ticker] {base_url}: {e}")
+    return []
 
 
 def validate_ticker(ticker: str) -> dict:
@@ -164,22 +198,27 @@ def update_all_prices():
                 )
                 print(f"  {asset}: {price:,.2f}")
 
-        # 2) 예측 테이블에 있는 개별종목 티커 업데이트
+        # 2) 예측 테이블에 있는 개별종목 업데이트
+        # ticker 컬럼이 있으면 해당 티커로 가격 조회, 없으면 asset_market을 티커로 사용
+        # 가격은 항상 asset_market(표시명) 기준으로 저장 → 대시보드 조인에 사용
         placeholders = ",".join("?" * len(ASSET_LIST))
         custom_rows = conn.execute(
-            f"SELECT DISTINCT asset_market FROM predictions WHERE asset_market NOT IN ({placeholders})",
+            f"SELECT DISTINCT asset_market, ticker FROM predictions "
+            f"WHERE asset_market NOT IN ({placeholders})",
             ASSET_LIST,
         ).fetchall()
 
         for row in custom_rows:
-            ticker = row["asset_market"]
+            display_name = row["asset_market"]
+            ticker       = row["ticker"] or display_name  # ticker 없으면 asset_market을 티커로 사용
             price = _yfinance_price(ticker)
             if price is not None:
                 conn.execute(
                     "INSERT OR REPLACE INTO prices (asset_market, current_price, updated_at) VALUES (?,?,?)",
-                    (ticker, price, datetime.now().isoformat()),
+                    (display_name, price, datetime.now().isoformat()),
                 )
-                print(f"  {ticker}: {price:,.2f}")
+                label = f"{display_name}({ticker})" if ticker != display_name else display_name
+                print(f"  {label}: {price:,.2f}")
 
         conn.commit()
         _save_daily_index(conn)
