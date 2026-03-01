@@ -82,10 +82,10 @@ select, input, button { font-family: inherit; }
 .channel-banner {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   max-width: 860px;
   margin: 16px auto 0;
-  padding: 12px 18px;
+  padding: 14px 20px;
   background: linear-gradient(135deg, #1a1e2e, #1e2838);
   border: 1px solid #2a3a4a;
   border-radius: var(--radius);
@@ -95,11 +95,11 @@ select, input, button { font-family: inherit; }
   transition: border-color .2s, transform .15s;
 }
 .channel-banner:hover { border-color: #4a9eff; transform: translateY(-1px); }
-.channel-icon { font-size: 1.3rem; }
-.channel-text { flex: 1; line-height: 1.5; }
-.channel-desc { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 3px; }
+.channel-icon { font-size: 1.3rem; flex-shrink: 0; }
+.channel-text { flex: 1; line-height: 1.6; }
 .channel-text b { color: #6ab4ff; }
-.channel-arrow { color: var(--muted); font-size: 1.1rem; transition: transform .2s; }
+.channel-desc { display: inline; font-size: 0.82rem; color: #e8c44a; }
+.channel-arrow { color: var(--muted); font-size: 1.1rem; flex-shrink: 0; transition: transform .2s; }
 .channel-banner:hover .channel-arrow { transform: translateX(4px); color: #6ab4ff; }
 
 /* ── 스탯 카드 ────────────────────────────── */
@@ -399,8 +399,8 @@ tbody tr:hover td { background: rgba(255,255,255,.025); }
     <a href="https://t.me/binance_pricechange" target="_blank" class="channel-banner">
       <span class="channel-icon">💬</span>
       <span class="channel-text">
-        <b>바이낸스 가격 급등락 알리미</b> — 텔레그램 채널 바로가기
-        <span class="channel-desc">[알람 최초] 바이낸스 코인의 시간별 세분화된 급등락 알림정보를 제공합니다. 코인 알람은 바로 바이낸스 해당 코인 매매 URL과 연결되어 편리합니다.</span>
+        <b>바이낸스 가격 급등락 알리미</b> — 텔레그램 채널 바로가기<br>
+        <span class="channel-desc">[알람 최초] 바이낸스 코인의 시간별 세분화된 급등락 알림정보 제공 | 코인 알람 클릭 시 바이낸스 매매 URL 바로 연결</span>
       </span>
       <span class="channel-arrow">→</span>
     </a>
