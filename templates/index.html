@@ -96,7 +96,8 @@ select, input, button { font-family: inherit; }
 }
 .channel-banner:hover { border-color: #4a9eff; transform: translateY(-1px); }
 .channel-icon { font-size: 1.3rem; }
-.channel-text { flex: 1; }
+.channel-text { flex: 1; line-height: 1.5; }
+.channel-desc { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 3px; }
 .channel-text b { color: #6ab4ff; }
 .channel-arrow { color: var(--muted); font-size: 1.1rem; transition: transform .2s; }
 .channel-banner:hover .channel-arrow { transform: translateX(4px); color: #6ab4ff; }
@@ -397,7 +398,10 @@ tbody tr:hover td { background: rgba(255,255,255,.025); }
 
     <a href="https://t.me/binance_pricechange" target="_blank" class="channel-banner">
       <span class="channel-icon">💬</span>
-      <span class="channel-text"><b>바이낸스 가격 급등락 알리미</b> — 텔레그램 채널 바로가기</span>
+      <span class="channel-text">
+        <b>바이낸스 가격 급등락 알리미</b> — 텔레그램 채널 바로가기
+        <span class="channel-desc">[알람 최초] 바이낸스 코인의 시간별 세분화된 급등락 알림정보를 제공합니다. 코인 알람은 바로 바이낸스 해당 코인 매매 URL과 연결되어 편리합니다.</span>
+      </span>
       <span class="channel-arrow">→</span>
     </a>
   </div>
