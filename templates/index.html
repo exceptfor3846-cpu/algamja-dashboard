@@ -79,6 +79,28 @@ select, input, button { font-family: inherit; }
 .criteria ol { padding-left: 18px; color: var(--muted); font-size: 0.85rem; }
 .criteria li { margin: 4px 0; }
 
+.channel-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 860px;
+  margin: 16px auto 0;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #1a1e2e, #1e2838);
+  border: 1px solid #2a3a4a;
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.88rem;
+  transition: border-color .2s, transform .15s;
+}
+.channel-banner:hover { border-color: #4a9eff; transform: translateY(-1px); }
+.channel-icon { font-size: 1.3rem; }
+.channel-text { flex: 1; }
+.channel-text b { color: #6ab4ff; }
+.channel-arrow { color: var(--muted); font-size: 1.1rem; transition: transform .2s; }
+.channel-banner:hover .channel-arrow { transform: translateX(4px); color: #6ab4ff; }
+
 /* ── 스탯 카드 ────────────────────────────── */
 .stats {
   display: grid;
@@ -372,6 +394,12 @@ tbody tr:hover td { background: rgba(255,255,255,.025); }
         <li>적중 여부 = 해당 자산의 영상 게시 시점 가격 대비 다음 영상 게시 시점 가격의 상승 / 하락 여부로 적중을 판단합니다.</li>
       </ol>
     </div>
+
+    <a href="https://t.me/binance_pricechange" target="_blank" class="channel-banner">
+      <span class="channel-icon">💬</span>
+      <span class="channel-text"><b>바이낸스 가격 급등락 알리미</b> — 텔레그램 채널 바로가기</span>
+      <span class="channel-arrow">→</span>
+    </a>
   </div>
 
   <!-- ── 통계 카드 ── -->
